@@ -18,6 +18,7 @@
 #include "rdb_protocol/datum_utils.hpp"
 #include "rdb_protocol/profile.hpp"
 #include "rdb_protocol/wire_func.hpp"
+#include "region/region.hpp"
 
 enum class is_primary_t { NO, YES };
 
@@ -54,7 +55,25 @@ RDB_DECLARE_SERIALIZABLE(rget_item_t);
 
 void debug_print(printf_buffer_t *, const rget_item_t &);
 
-typedef std::vector<rget_item_t> stream_t;
+typedef std::vector<rget_item_t> raw_stream_t;
+struct keyed_stream_t {
+    raw_stream_t stream;
+    store_key_t last_key;
+    bool truncated;
+};
+struct stream_t {
+    // When we first construct a `stream_t`, it's always for a single shard.
+    stream_t(region_t region,
+             store_key_t last_key,
+             bool truncated)
+        : substreams{{
+            std::move(region),
+            keyed_stream_t{raw_stream_t(), std::move(last_key), truncated}}} { }
+    stream_t(std::map<region_t, keyed_stream_t> &&_substreams)
+        : substreams(std::move(_substreams)) { }
+    stream_t() { }
+    std::map<region_t, keyed_stream_t> substreams;
+};
 
 class optimizer_t {
 public:

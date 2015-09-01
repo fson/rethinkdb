@@ -272,7 +272,7 @@ struct rdb_read_visitor_t : public boost::static_visitor<void> {
     void operator()(const changefeed_limit_subscribe_t &s) {
         ql::env_t env(ctx, ql::return_empty_normal_batches_t::NO,
                       interruptor, s.optargs, trace);
-        ql::stream_t stream;
+        ql::raw_stream_t stream;
         {
             std::vector<scoped_ptr_t<ql::op_t> > ops;
             for (const auto &transform : s.spec.range.transforms) {
@@ -312,7 +312,9 @@ struct rdb_read_visitor_t : public boost::static_visitor<void> {
                 response->response = resp;
                 return;
             }
-            stream = groups_to_batch(gs->get_underlying_map());
+            stream_t s = groups_to_batch(gs->get_underlying_map());
+            guarantee(s.substreams.size() == 1);
+            stream = std::move(s.substreams.begin()->second.stream);
         }
         auto lvec = ql::changefeed::mangle_sort_truncate_stream(
             std::move(stream),

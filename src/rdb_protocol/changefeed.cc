@@ -745,7 +745,7 @@ sorting_t flip(sorting_t sorting) {
 }
 
 std::vector<item_t> mangle_sort_truncate_stream(
-    stream_t &&stream, is_primary_t is_primary, sorting_t sorting, size_t n) {
+    raw_stream_t &&stream, is_primary_t is_primary, sorting_t sorting, size_t n) {
     std::vector<item_t> vec;
     vec.reserve(stream.size());
     for (auto &&item : stream) {
@@ -949,9 +949,11 @@ public:
             throw *exc;
         }
         stream_t stream = groups_to_batch(gs->get_underlying_map());
-        guarantee(stream.size() <= n);
+        guarantee(stream.substreams.size() == 1);
+        raw_stream_t *raw_stream = &stream.substreams.begin()->second.stream;
+        guarantee(raw_stream->size() <= n);
         std::vector<item_t> item_vec = mangle_sort_truncate_stream(
-            std::move(stream), is_primary_t::YES, sorting, n);
+            std::move(*raw_stream), is_primary_t::YES, sorting, n);
         return item_vec;
     }
 
@@ -996,8 +998,10 @@ public:
             throw *exc;
         }
         stream_t stream = groups_to_batch(gs->get_underlying_map());
+        guarantee(stream.substreams.size() == 1);
+        raw_stream_t *raw_stream = &stream.substreams.begin()->second.stream;
         std::vector<item_t> item_vec = mangle_sort_truncate_stream(
-            std::move(stream), is_primary_t::NO, sorting, n);
+            std::move(*raw_stream), is_primary_t::NO, sorting, n);
         return item_vec;
     }
 

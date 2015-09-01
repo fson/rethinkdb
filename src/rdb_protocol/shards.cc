@@ -128,8 +128,13 @@ private:
 
 class append_t : public grouped_acc_t<stream_t> {
 public:
-    append_t(sorting_t _sorting, batcher_t *_batcher)
-        : grouped_acc_t<stream_t>(stream_t()),
+    append_t(region_t region,
+             store_key_t last_key,
+             bool truncated,
+             sorting_t _sorting,
+             batcher_t *_batcher)
+        : grouped_acc_t<stream_t>(stream_t{
+                std::move(region), std::move(last_key), truncated}),
           sorting(_sorting), key_le(sorting), batcher(_batcher) { }
 protected:
     virtual bool should_send_batch() {
